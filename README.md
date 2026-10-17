@@ -27,9 +27,10 @@ It is the Neovim half of Pi's `/annotate` command, but it works on its own.
 ## Requirements
 
 - Neovim `>= 0.9.0`
-- Start Neovim **with the Markdown file as an argument**: `nvim notes.md`.
-  The plugin takes the reviewed file from `argv`, so it activates on launch,
-  not when a file is opened later with `:e`.
+- A way to arm review mode: `:Annotate notes.md`, `$ANNOTATE_FILE=notes.md`,
+  or `require('annotate').setup({ path = 'notes.md' })`. The plugin never
+  activates by itself — `nvim notes.md` is ordinary editing, and no sidecar is
+  created until review mode starts.
 
 ## Installation
 
@@ -38,19 +39,20 @@ It is the Neovim half of Pi's `/annotate` command, but it works on its own.
 ```lua
 {
     'e-denny/annotate.nvim',
-    ft = 'markdown',
-    opts = {},
+    cmd = 'Annotate',
+    module = 'annotate',
 }
 ```
 
-`opts = {}` calls `require('annotate').setup({})`. `setup()` returns `false`
-and does nothing when Neovim was not started with a `.md` argument, so it is
-harmless to load on every Markdown buffer.
+No `ft` trigger and no `opts`: the plugin loads only when `:Annotate` runs or
+something requires the module (Pi's `/annotate` command does). Loading it on
+every Markdown buffer would not start a review, but there is no reason to.
 
 ### Manual
 
 ```lua
 require('annotate').setup({
+    path = 'notes.md',   -- the file to review; required
     -- optional overrides, see Configuration
 })
 ```
@@ -157,6 +159,10 @@ nvim -c 'set rtp^=~/.local/share/nvim/lazy/annotate.nvim' \
      -c 'lua require("annotate").setup()'
 ```
 
+The extension sets `ANNOTATE_FILE` to the absolute path it wants reviewed;
+`setup()` reads that when it gets no explicit `path`, so the command line only
+has to open the file normally.
+
 The data directory follows `$XDG_DATA_HOME` (default `~/.local/share`). Install
 the plugin with lazy.nvim first (see above).
 
@@ -165,8 +171,9 @@ the plugin with lazy.nvim first (see above).
 - **Nothing happens on `<Space>C`** — the mapping is buffer-local to the
   reviewed file and only active in visual mode for comments. Check
   `:verbose xmap <Space>C`.
-- **The plugin does not start** — Neovim must be launched as `nvim notes.md`;
-  `require('annotate').setup()` looks for the Markdown file in `argv`.
+- **The plugin does not start** — review mode is explicit. Use
+  `:Annotate notes.md`, call `setup({ path = 'notes.md' })`, or set
+  `ANNOTATE_FILE`. `nvim notes.md` alone stays in plain editing mode.
 - **A sidecar from an earlier review is still there** — it is reopened with its
   annotations, so unfinished notes are not lost.
 - **Boxes look ragged** — notes wrap to the box as you type, and a line that is

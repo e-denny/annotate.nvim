@@ -1120,26 +1120,43 @@ local function setup_autocmds()
 end
 
 --- Activate annotate mode for the current Neovim instance, if it applies.
+-- Activation is explicit: the caller names the file to review. The command
+-- line is never inspected, so `nvim notes.md` starts plain editing like any
+-- other file. Review mode is armed only by `setup({ path = ... })`,
+-- `$ANNOTATE_FILE`, `:Annotate notes.md`, or Pi's /annotate command.
+local function requested_target(opts)
+  local candidate = (opts and (opts.path or opts.file))
+  if type(candidate) ~= "string" or candidate == "" then
+    candidate = vim.env.ANNOTATE_FILE
+  end
+  if type(candidate) ~= "string" or candidate == "" then
+    candidate = vim.g.annotate_file
+  end
+  if type(candidate) ~= "string" or candidate == "" then
+    return nil
+  end
+  if not candidate:match("%.[mM][dD]$") then
+    return nil
+  end
+  return candidate
+end
+
 function M.setup(opts)
   if S.ready then
     return true
   end
-  M.config = vim.tbl_deep_extend("force", M.config, vim.g.annotate or {}, opts or {})
+  local overrides = vim.deepcopy(opts or {})
+  overrides.path = nil
+  overrides.file = nil
+  M.config = vim.tbl_deep_extend("force", M.config, vim.g.annotate or {}, overrides)
 
-  local argv = fn.argv()
-  local candidate
-  for _, a in ipairs(argv) do
-    if a:match("%.[mM][dD]$") then
-      candidate = a
-      break
-    end
-  end
-  if not candidate then
+  local target = requested_target(opts)
+  if not target then
     return false
   end
 
-  S.main_path = fn.fnamemodify(main_path_for(candidate), ":p")
-  S.comments_path = fn.fnamemodify(comments_path_for(candidate), ":p")
+  S.main_path = fn.fnamemodify(main_path_for(target), ":p")
+  S.comments_path = fn.fnamemodify(comments_path_for(target), ":p")
   if S.main_path == S.comments_path then
     return false
   end
