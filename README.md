@@ -27,10 +27,11 @@ It is the Neovim half of Pi's `/annotate` command, but it works on its own.
 ## Requirements
 
 - Neovim `>= 0.9.0`
-- A way to arm review mode: `:Annotate notes.md`, `$ANNOTATE_FILE=notes.md`,
-  or `require('annotate').setup({ path = 'notes.md' })`. The plugin never
-  activates by itself — `nvim notes.md` is ordinary editing, and no sidecar is
-  created until review mode starts.
+- A way to arm review mode: `:Annotate notes.md` or
+  `require('annotate').setup({ path = 'notes.md' })`; `setup()` also falls back
+  to `$ANNOTATE_FILE` and `vim.g.annotate_file` when it gets no path. The
+  plugin never activates by itself — `nvim notes.md` is ordinary editing, and
+  no sidecar is created until review mode starts.
 
 ## Installation
 
@@ -61,6 +62,7 @@ require('annotate').setup({
 
 | Step | Keys |
 | --- | --- |
+| Start a review | `:Annotate notes.md` (or no argument for the current file) |
 | Comment a selection | select text in the reviewed file, `<Space>C` |
 | Write the note | the cursor jumps into the new box — type, then `<Space>C` jumps back |
 | Mark a selection for deletion | select text, `<Space>D` (press it again on the same range to undo) |
