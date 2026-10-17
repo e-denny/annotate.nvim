@@ -149,14 +149,16 @@ vim.g.annotate = {
 The Pi extension in [`e-denny/pi-config`](https://github.com/e-denny/pi-config)
 registers `/annotate notes.md`. It opens a Herdr tab running Neovim with this
 plugin on the `runtimepath`, waits for Neovim to exit, and then hands the
-sidecar back to the agent as a message:
+sidecar back to the agent as a message. The extension loads the plugin from its
+lazy.nvim checkout (it does not bundle a copy):
 
 ```
-nvim -c 'set rtp^=<extension>/nvim' -c 'lua require("annotate").setup()'
+nvim -c 'set rtp^=~/.local/share/nvim/lazy/annotate.nvim' \
+     -c 'lua require("annotate").setup()'
 ```
 
-The extension ships its own copy of `lua/annotate/init.lua`. This repository is
-the standalone distribution of the same plugin.
+The data directory follows `$XDG_DATA_HOME` (default `~/.local/share`). Install
+the plugin with lazy.nvim first (see above).
 
 ## Troubleshooting
 
