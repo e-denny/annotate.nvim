@@ -15,6 +15,7 @@
 --   <leader>D  mark the selection for deletion (strikethrough)
 -- <leader>C in the comments pane jumps back to the annotated text, and
 -- <leader>C on an annotated span in the reviewed file jumps to its box.
+-- <leader>Q finishes the review; <leader>X aborts it.
 
 local M = {}
 
@@ -57,6 +58,7 @@ M.config = {
   map_comment = "<leader>C",
   map_delete = "<leader>D",
   map_finish = "<leader>Q",
+  map_abort = "<leader>X",
   scroll_sync = true,
   autosave = true,
   autoformat = true,
@@ -733,8 +735,8 @@ function M.jump_back()
   end
 end
 
---- Save everything and leave Neovim, ending the review session.
-function M.finish()
+--- Write the sidecar and every other modified file, then leave Neovim.
+local function leave_editor()
   M.rewrite_markers()
   M.relayout()
   M.save_comments()
@@ -753,6 +755,29 @@ function M.finish()
   if not ok then
     vim.cmd("qa!")
   end
+end
+
+--- Save everything and leave Neovim, ending the review session.
+function M.finish()
+  leave_editor()
+end
+
+--- Abandon the review and leave Neovim without handing the sidecar to Pi.
+---
+--- The sidecar stays on disk, so reopening the review resumes the notes, and
+--- unsaved edits to the reviewed file are still written out. An aborting
+--- consumer (Pi's /annotate) sets $ANNOTATE_ABORT_FILE; the marker file it
+--- names is how an aborted review is told apart from a finished one. Without
+--- that variable, abort just closes the review.
+function M.abort()
+  local marker = vim.env.ANNOTATE_ABORT_FILE
+  if type(marker) == "string" and marker ~= "" then
+    local ok, err = pcall(fn.writefile, { "annotation aborted" }, marker)
+    if not ok then
+      notify("could not write abort marker: " .. tostring(err), vim.log.levels.WARN)
+    end
+  end
+  leave_editor()
 end
 
 function M.jump_to_comment()
@@ -993,9 +1018,14 @@ local function setup_keymaps()
     vim.keymap.set("n", cfg.map_finish, function()
       M.finish()
     end, { buffer = buf, silent = true, desc = "Annotate: finish review" })
+    vim.keymap.set("n", cfg.map_abort, function()
+      M.abort()
+    end, { buffer = buf, silent = true, desc = "Annotate: abort review" })
   end
   vim.keymap.set("i", cfg.map_finish, "<Esc><Cmd>lua require('annotate').finish()<CR>",
     { buffer = S.comments_buf, silent = true, desc = "Annotate: finish review" })
+  vim.keymap.set("i", cfg.map_abort, "<Esc><Cmd>lua require('annotate').abort()<CR>",
+    { buffer = S.comments_buf, silent = true, desc = "Annotate: abort review" })
 end
 
 local function setup_window()
@@ -1095,6 +1125,10 @@ local function setup_autocmds()
     M.finish()
   end, { desc = "Save the annotations and close Neovim" })
 
+  api.nvim_create_user_command("AnnotateAbort", function()
+    M.abort()
+  end, { desc = "Close Neovim without handing the annotations on" })
+
   api.nvim_create_user_command("AnnotateRefresh", function()
     S.anchors = {}
     S.marks = {}
@@ -1184,9 +1218,10 @@ function M.setup(opts)
   setup_keymaps()
   setup_autocmds()
   M.refresh()
-  notify(string.format("reviewing %s — %s comment · %s delete · %s finish",
+  notify(string.format("reviewing %s — %s comment · %s delete · %s finish · %s abort",
     fn.fnamemodify(S.main_path, ":t"), pretty_key(M.config.map_comment),
-    pretty_key(M.config.map_delete), pretty_key(M.config.map_finish)))
+    pretty_key(M.config.map_delete), pretty_key(M.config.map_finish),
+    pretty_key(M.config.map_abort)))
   return true
 end
 

@@ -70,18 +70,24 @@ require('annotate').setup({
 | Jump back from a box to the text | `<Space>C` in the sidecar |
 | Remove the annotation under the cursor | `:AnnotateClear` |
 | Finish the review | `<Space>Q` (or `:AnnotateDone`, or just quit Neovim) |
+| Abort the review | `<Space>X` (or `:AnnotateAbort`) — close Neovim and leave the notes for later |
 
 `<leader>` is your Neovim leader (space in LazyVim). The maps are buffer-local
 to the reviewed file and sidecar, so they do not leak into other buffers.
 
 Leaving Neovim with `:qa`, `:wq`, `<Space>Q`, or `:AnnotateDone` all end the
 review. Unsaved edits to the reviewed file are written out before quitting.
+Aborting with `<Space>X` or `:AnnotateAbort` also ends the review and saves
+your work, but the sidecar is kept on disk and never handed to the caller — a
+consumer such as Pi's `/annotate` is told the review was aborted instead.
+Reopening the review picks the notes up again.
 
 ### Commands
 
 | Command | Description |
 | --- | --- |
 | `:AnnotateDone` | Save the annotations and close Neovim |
+| `:AnnotateAbort` | Close Neovim without handing the annotations on (sidecar kept) |
 | `:AnnotateRefresh` | Re-read annotation anchors from the comments file |
 | `:AnnotateClear` | Remove the annotation under the cursor |
 
@@ -135,6 +141,7 @@ vim.g.annotate = {
     map_comment = '<leader>C',
     map_delete = '<leader>D',
     map_finish = '<leader>Q',
+    map_abort = '<leader>X',
     width_ratio = 0.42,        -- sidecar width as a share of the window
     min_width = 34,
     max_width = 90,
@@ -167,6 +174,12 @@ has to open the file normally.
 
 The data directory follows `$XDG_DATA_HOME` (default `~/.local/share`). Install
 the plugin with lazy.nvim first (see above).
+
+When the review is aborted, the plugin writes a marker file to the path in
+`$ANNOTATE_ABORT_FILE` (the extension passes one in the Neovim environment)
+before quitting; the extension sees the marker and messages the agent
+`annotation aborted` instead of the sidecar. Without that variable, aborting
+simply closes the review.
 
 ## Troubleshooting
 
